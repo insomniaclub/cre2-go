@@ -1,23 +1,24 @@
-#ifndef CRE2_CGO_H
-#define CRE2_CGO_H
+// Copyright [2022] <liushenggen>
+
+#ifndef CRE2_CGO_H_
+#define CRE2_CGO_H_
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
-#include "cre2.h"
+#include "./cre2.h"
 
-#ifndef CRE2_CGO_DECL
-#define CRE2_CGO_DECL extern
-#endif
+bool match(cre2_regexp_t *rex, const char *text, int textlen);
 
-    CRE2_CGO_DECL bool match(cre2_regexp_t *rex, const char *text, int textlen);
-    CRE2_CGO_DECL int all_matches(cre2_regexp_t *rex, const char *text, int textlen, cre2_string_t *match, int nmatch, int nsubmatch);
-    CRE2_CGO_DECL int all_matches_index(cre2_regexp_t *rex, const char *text, int textlen, int *match, int nmatch, int nsubmatch);
+int all_matches(cre2_regexp_t *rex, const char *text, int textlen,
+                cre2_string_t *match, int nmatch, int nsubmatch);
+
+int all_matches_index(cre2_regexp_t *rex, const char *text, int textlen,
+                      int *match, int nmatch, int nsubmatch);
 
 #ifdef __cplusplus
-} // extern "C"
+}  // extern "C"
 #endif
 
-#endif
+#endif  // CRE2_CGO_H_

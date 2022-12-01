@@ -201,3 +201,21 @@ func BenchmarkOriginFindAllStringIndex_Simple(b *testing.B) {
 		_ = re.FindAllStringIndex(textSimple, -1)
 	}
 }
+
+func BenchmarkCre2FindAllStringSubmatchIndex_Simple(b *testing.B) {
+	re := MustCompile(patternSimple)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = re.FindAllStringSubmatchIndex(textSimple, -1)
+	}
+}
+
+func BenchmarkOriginFindAllStringSubmatchIndex_Simple(b *testing.B) {
+	re := regexp.MustCompile(patternSimple)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = re.FindAllStringSubmatchIndex(textSimple, -1)
+	}
+}

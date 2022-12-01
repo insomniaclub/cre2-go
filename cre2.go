@@ -1,8 +1,5 @@
 package cre2
 
-//#cgo LDFLAGS: -lre2 -lstdc++ -O3
-//#cgo CFLAGS: -I${SRCDIR}/. -O3
-//#include <stdlib.h>
 //#include "cre2.h"
 //#include "cre2_cgo.h"
 import "C"
@@ -17,7 +14,7 @@ type unsafeptr = unsafe.Pointer
 // A Regexp is safe for concurrent use by multiple goroutines,
 // except for configuration methods, such as Longest.
 type Regexp struct {
-	opt    unsafeptr //	*C.cre2_options_t
+	opt    unsafeptr // *C.cre2_options_t
 	rex    unsafeptr // *C.cre2_regexp_t
 	nGroup int       // num of capturing groups
 }
