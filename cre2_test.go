@@ -43,6 +43,14 @@ func TestMatch(t *testing.T) {
 	})
 }
 
+func TestFindString(t *testing.T) {
+	convey.Convey("TestFindAllString", t, func() {
+		re := MustCompile(patternSimple)
+		convey.So(re.FindString(textUnmatch), convey.ShouldEqual, "")
+		convey.So(re.FindString(textSimple), convey.ShouldEqual, simpleMatch[0])
+	})
+}
+
 func TestFindAllString(t *testing.T) {
 	convey.Convey("TestFindAllString", t, func() {
 		re := MustCompile(patternSimple)
@@ -110,12 +118,30 @@ func BenchmarkOriginMatch_Simple(b *testing.B) {
 	}
 }
 
+func BenchmarkCre2FindString_Simple(b *testing.B) {
+	re := MustCompile(patternSimple)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = re.FindString(textSimple)
+	}
+}
+
+func BenchmarkOriginFindString_Simple(b *testing.B) {
+	re := regexp.MustCompile(patternSimple)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = re.FindString(textSimple)
+	}
+}
+
 func BenchmarkCre2FindAllString_Simple(b *testing.B) {
 	re := MustCompile(patternSimple)
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		re.FindAllString(textSimple, -1)
+		_ = re.FindAllString(textSimple, -1)
 	}
 }
 
@@ -124,7 +150,7 @@ func BenchmarkOriginFindAllString_Simple(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		re.FindAllString(textSimple, -1)
+		_ = re.FindAllString(textSimple, -1)
 	}
 }
 
@@ -133,7 +159,7 @@ func BenchmarkCre2FindAllStringSubmatch_Simple(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		re.FindAllStringSubmatch(textSimple, -1)
+		_ = re.FindAllStringSubmatch(textSimple, -1)
 	}
 }
 
@@ -142,7 +168,7 @@ func BenchmarkOriginFindAllStringSubmatch_Simple(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		re.FindAllStringSubmatch(textSimple, -1)
+		_ = re.FindAllStringSubmatch(textSimple, -1)
 	}
 }
 
@@ -151,7 +177,7 @@ func BenchmarkCre2FindAllStringIndex_Simple(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		re.FindAllStringIndex(textSimple, -1)
+		_ = re.FindAllStringIndex(textSimple, -1)
 	}
 }
 
@@ -160,6 +186,6 @@ func BenchmarkOriginFindAllStringIndex_Simple(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		re.FindAllStringIndex(textSimple, -1)
+		_ = re.FindAllStringIndex(textSimple, -1)
 	}
 }

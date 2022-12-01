@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"unsafe"
 
-	"github.com/gensliu/cre2-go/pkg/nocopy"
+	"github.com/gensliu/nocopy"
 )
 
 type unsafeptr = unsafe.Pointer
@@ -21,7 +21,7 @@ type unsafeptr = unsafe.Pointer
 type Regexp struct {
 	opt    unsafeptr //	*C.cre2_options_t
 	rex    unsafeptr // *C.cre2_regexp_t
-	nGroup int       // the number of capturing groups
+	nGroup int       // num of capturing groups
 }
 
 // Compile parses a regular expression and returns, if successful,
@@ -51,7 +51,7 @@ func MustCompile(s string) *Regexp {
 	return r
 }
 
-// Close will free the members of the Regexp, which allocated in C heap.
+// Close will free the members of the Regexp, which was allocated in C heap.
 func (r *Regexp) Close() {
 	if r.rex != nil {
 		C.cre2_delete(r.rex)
@@ -63,11 +63,31 @@ func (r *Regexp) Close() {
 	}
 }
 
+// Match reports whether the byte slice b
+// contains any match of the regular expression r.
+func (r *Regexp) Match(b []byte) bool {
+	cstr := (*C.cre2_string_t)(unsafe.Pointer(&b))
+	return bool(C.match(r.rex, cstr.data, cstr.length))
+}
+
 // MatchString reports whether the string s
 // contains any match of the regular expression r.
 func (r *Regexp) MatchString(s string) bool {
-	b := nocopy.StringToBytes(s)
-	return bool(C.match_string(r.rex, (*C.char)(unsafe.Pointer(&b[0])), C.int(len(b))))
+	// cstr := (*C.cre2_string_t)(unsafe.Pointer(&s))
+	// return bool(C.match(r.rex, cstr.data, cstr.length))
+	return r.Match(nocopy.StringToBytes(s))
+}
+
+// FindString returns a string holding the text of the leftmost match in s of the regular
+// expression. If there is no match, the return value is an empty string,
+// but it will also be empty if the regular expression successfully matches
+// an empty string.
+func (r *Regexp) FindString(s string) string {
+	match := r.FindAllString(s, 1)
+	if len(match) == 0 {
+		return ""
+	}
+	return match[0]
 }
 
 // FindAllString returns a slice of all successive matches of the expression,
@@ -78,24 +98,20 @@ func (r *Regexp) FindAllString(s string, n int) []string {
 		return nil
 	}
 
-	b := nocopy.StringToBytes(s)
+	cstr := (*C.cre2_string_t)(unsafe.Pointer(&s))
 	if n < 0 {
-		n = len(b) + 1
-	}
-	// TODO 限制空间大小？
-	if n > 200 {
-		n = 200
+		n = int(cstr.length) + 1
 	}
 
 	matched := make([]string, n)
-	len := C.find_all_string(
-		r.rex,                            // regexp
-		(*C.char)(unsafe.Pointer(&b[0])), // text_addr
-		C.int(len(b)),                    // text_len
-		(*C.cre2_string_t)(unsafe.Pointer(&matched[0])), // match_addr
-		C.int(n), // max_match
+	len := C.all_matches(
+		/* regexp    */ r.rex,
+		/* textaddr  */ cstr.data,
+		/* textlen   */ cstr.length,
+		/* match     */ (*C.cre2_string_t)(unsafe.Pointer(&matched[0])),
+		/* nmatch    */ C.int(n),
+		/* nsubmatch */ 1,
 	)
-
 	if len == 0 {
 		return nil
 	}
@@ -112,24 +128,25 @@ func (r *Regexp) FindAllStringSubmatch(s string, n int) [][]string {
 		return nil
 	}
 
-	b := nocopy.StringToBytes(s)
+	cstr := (*C.cre2_string_t)(unsafe.Pointer(&s))
 	if n < 0 {
-		n = len(b) + 1
+		n = int(cstr.length) + 1
 	}
 
-	// NOTE: the following code will cause a gc panic, because the memory of [][]string in C is not continuous.
+	// NOTE: the following code will cause a gc panic, because the memory of [][]string is not continuous.
 	// 	match := make([][]string, n)
 	// 	for i := range match {
 	// 		match[i] = make([]string, re.nGroup+1)
 	// 	}
 	//	C.find_all_string_submatch(..., (**C.cre2_string_t)(unsafe.Pointer(&match[0][0])),...)
 	rawMatch := make([]string, n*(r.nGroup+1))
-	len := C.find_all_string_submatch(
-		r.rex,                            // regexp
-		(*C.char)(unsafe.Pointer(&b[0])), // text_addr
-		C.int(len(b)),                    // text_len
-		(**C.cre2_string_t)(unsafe.Pointer(&rawMatch[0])), // match_addr
-		C.int(n), //max_match
+	len := C.all_matches(
+		/* regexp    */ r.rex,
+		/* textaddr  */ cstr.data,
+		/* textlen   */ cstr.length,
+		/* match     */ (*C.cre2_string_t)(unsafe.Pointer(&rawMatch[0])),
+		/* nmatch    */ C.int(n),
+		/* nsubmatch */ C.int(r.nGroup+1),
 	)
 
 	if len == 0 {
@@ -154,18 +171,18 @@ func (r *Regexp) FindAllStringIndex(s string, n int) [][]int {
 		return nil
 	}
 
-	b := nocopy.StringToBytes(s)
+	cstr := (*C.cre2_string_t)(unsafe.Pointer(&s))
 	if n < 0 {
-		n = len(b) + 1
+		n = int(cstr.length) + 1
 	}
 
 	rawMatch := make([]C.int, n*2)
 	len := C.find_all_string_index(
-		r.rex,                                   // regexp
-		(*C.char)(unsafe.Pointer(&b[0])),        // text_addr
-		C.int(len(b)),                           // text_len
-		(**C.int)(unsafe.Pointer(&rawMatch[0])), // match_addr
-		C.int(n),                                //max_match
+		/* regexp   */ r.rex,
+		/* textaddr */ cstr.data,
+		/* textlen  */ cstr.length,
+		/* match    */ (**C.int)(unsafe.Pointer(&rawMatch[0])),
+		/* nmatch   */ C.int(n),
 	)
 
 	if len == 0 {
