@@ -11,11 +11,12 @@ var (
 	patternUnsupport = `(?=abc)123??????xxx------`
 	patternSimple    = `(?:学历|education|文化程度|教育经历|white)\s?=\s?(小学|初中|高中|中专|专科|大专|本科|研究生|博士)`
 
-	textUnmatch    = `这个字符串不会被上面的pattern匹配命中`
-	textSimple     = `测试匹配这个字符串学历=小学&education=大专&教育经历=专科&white=本科结束`
-	simpleMatch    = []string{"学历=小学", "education=大专", "教育经历=专科", "white=本科"}
-	simpleMatchIdx = [][]int{{27, 40}, {41, 57}, {58, 77}, {78, 90}}
-	simpleSubmatch = [][]string{{"学历=小学", "小学"}, {"education=大专", "大专"}, {"教育经历=专科", "专科"}, {"white=本科", "本科"}}
+	textUnmatch       = `这个字符串不会被上面的pattern匹配命中`
+	textSimple        = `测试匹配这个字符串学历=小学&education=大专&教育经历=专科&white=本科结束`
+	simpleMatch       = []string{"学历=小学", "education=大专", "教育经历=专科", "white=本科"}
+	simpleMatchIdx    = [][]int{{27, 40}, {41, 57}, {58, 77}, {78, 90}}
+	simpleSubmatch    = [][]string{{"学历=小学", "小学"}, {"education=大专", "大专"}, {"教育经历=专科", "专科"}, {"white=本科", "本科"}}
+	simpleSubmatchIdx = [][]int{{27, 40, 34, 40}, {41, 57, 51, 57}, {58, 77, 71, 77}, {78, 90, 84, 90}}
 )
 
 func TestCompile(t *testing.T) {
@@ -81,6 +82,17 @@ func TestFindAllStringIndex(t *testing.T) {
 		convey.So(re.FindAllStringIndex(textSimple, -1), convey.ShouldResemble, simpleMatchIdx)
 		convey.So(re.FindAllStringIndex(textSimple, 10), convey.ShouldResemble, simpleMatchIdx)
 		convey.So(re.FindAllStringIndex(textSimple, 2), convey.ShouldResemble, simpleMatchIdx[:2])
+	})
+}
+
+func TestFindAllStringSubmatchIndex(t *testing.T) {
+	convey.Convey("TestFindAllStringSubmatchIndex", t, func() {
+		re := MustCompile(patternSimple)
+		convey.So(re.FindAllStringSubmatchIndex(textUnmatch, -1), convey.ShouldEqual, [][]int(nil))
+		convey.So(re.FindAllStringSubmatchIndex(textSimple, 0), convey.ShouldEqual, [][]int(nil))
+		convey.So(re.FindAllStringSubmatchIndex(textSimple, -1), convey.ShouldResemble, simpleSubmatchIdx)
+		convey.So(re.FindAllStringSubmatchIndex(textSimple, 10), convey.ShouldResemble, simpleSubmatchIdx)
+		convey.So(re.FindAllStringSubmatchIndex(textSimple, 2), convey.ShouldResemble, simpleSubmatchIdx[:2])
 	})
 }
 

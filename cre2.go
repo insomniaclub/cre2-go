@@ -113,7 +113,6 @@ func (r *Regexp) FindAllString(s string, n int) []string {
 // as defined by the 'All' description in the package comment.
 // A return value of nil indicates no match.
 func (r *Regexp) FindAllStringSubmatch(s string, n int) [][]string {
-	// debug.SetGCPercent(-1)
 	if n == 0 {
 		return nil
 	}
@@ -128,7 +127,7 @@ func (r *Regexp) FindAllStringSubmatch(s string, n int) [][]string {
 	// 	for i := range match {
 	// 		match[i] = make([]string, re.nGroup+1)
 	// 	}
-	//	C.find_all_string_submatch(..., (**C.cre2_string_t)(unsafe.Pointer(&match[0][0])),...)
+	//	C.all_matches(..., (**C.cre2_string_t)(unsafe.Pointer(&match[0][0])),...)
 	rawMatch := make([]string, n*(r.nGroup+1))
 	len := C.all_matches(
 		/* regexp    */ r.rex,
@@ -167,12 +166,13 @@ func (r *Regexp) FindAllStringIndex(s string, n int) [][]int {
 	}
 
 	rawMatch := make([]C.int, n*2)
-	len := C.find_all_string_index(
-		/* regexp   */ r.rex,
-		/* textaddr */ cstr.data,
-		/* textlen  */ cstr.length,
-		/* match    */ (**C.int)(unsafe.Pointer(&rawMatch[0])),
-		/* nmatch   */ C.int(n),
+	len := C.all_matches_index(
+		/* regexp    */ r.rex,
+		/* textaddr  */ cstr.data,
+		/* textlen   */ cstr.length,
+		/* match     */ (*C.int)(unsafe.Pointer(&rawMatch[0])),
+		/* nmatch    */ C.int(n),
+		/* nsubmatch */ 1,
 	)
 
 	if len == 0 {
@@ -183,6 +183,48 @@ func (r *Regexp) FindAllStringIndex(s string, n int) [][]int {
 	match := make([][]int, len)
 	for i := 0; i < int(len); i++ {
 		match[i] = []int{int(rawMatch[i*2]), int(rawMatch[i*2+1])}
+	}
+
+	return match[:len]
+}
+
+func (r *Regexp) FindAllStringSubmatchIndex(s string, n int) [][]int {
+	if n == 0 {
+		return nil
+	}
+
+	cstr := (*C.cre2_string_t)(unsafe.Pointer(&s))
+	if n < 0 {
+		n = int(cstr.length) + 1
+	}
+
+	// NOTE: the following code will cause a gc panic, because the memory of [][]int is not continuous.
+	// 	match := make([][]int, n)
+	// 	for i := range match {
+	// 		match[i] = make([]int, re.nGroup+1)
+	// 	}
+	//	C.all_matches_index(..., (**C.cre2_string_t)(unsafe.Pointer(&match[0][0])),...)
+	rawMatch := make([]C.int, n*(r.nGroup+1)*2)
+	len := C.all_matches_index(
+		/* regexp    */ r.rex,
+		/* textaddr  */ cstr.data,
+		/* textlen   */ cstr.length,
+		/* match     */ (*C.int)(unsafe.Pointer(&rawMatch[0])),
+		/* nmatch    */ C.int(n),
+		/* nsubmatch */ C.int(r.nGroup+1),
+	)
+
+	if len == 0 {
+		return nil
+	}
+
+	rawMatch = rawMatch[:int(len)*(r.nGroup+1)*2]
+	match := make([][]int, len)
+	for i := 0; i < int(len); i++ {
+		match[i] = make([]int, (r.nGroup+1)*2)
+		for j := 0; j < (r.nGroup+1)*2; j++ {
+			match[i][j] = int(rawMatch[i*(r.nGroup+1)*2+j])
+		}
 	}
 
 	return match[:len]

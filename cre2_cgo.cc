@@ -23,21 +23,24 @@ bool match(cre2_regexp_t *rex, const char *text, int textlen)
     return cre2_match(rex, text, textlen, 0, textlen, CRE2_UNANCHORED, NULL, 0) == 1;
 }
 
-int find_all_string_index(cre2_regexp_t *rex, const char *text, int textlen, int **match, int nmatch)
+int all_matches_index(cre2_regexp_t *rex, const char *text, int textlen, int *match, int nmatch, int nsubmatch)
 {
     int cnt = 0;
     const char *start_addr = text;
     while (cnt < nmatch && textlen > 0)
     {
-        cre2_string_t str;
-        if (!cre2_match(rex, text, textlen, 0, textlen, CRE2_UNANCHORED, &str, 1))
+        cre2_string_t str[nsubmatch];
+        if (!cre2_match(rex, text, textlen, 0, textlen, CRE2_UNANCHORED, &str[0], nsubmatch))
         {
             return cnt;
         }
-        ((int *)match + cnt * 2)[0] = str.data - start_addr;
-        ((int *)match + cnt * 2)[1] = ((int *)match + cnt * 2)[0] + str.length;
-        textlen -= str.data + str.length - text;
-        text = str.data + str.length;
+        for (int i = 0; i < nsubmatch; i++)
+        {
+            ((int *)match + cnt * nsubmatch * 2)[2 * i] = str[i].data - start_addr;
+            ((int *)match + cnt * nsubmatch * 2)[2 * i + 1] = ((int *)match + cnt * nsubmatch * 2)[2 * i] + str[i].length;
+        }
+        textlen -= str->data + str->length - text;
+        text = str->data + str->length;
         cnt++;
     }
     return cnt;
