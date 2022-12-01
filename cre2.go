@@ -9,8 +9,6 @@ import "C"
 import (
 	"fmt"
 	"unsafe"
-
-	"github.com/gensliu/nocopy"
 )
 
 type unsafeptr = unsafe.Pointer
@@ -63,19 +61,11 @@ func (r *Regexp) Close() {
 	}
 }
 
-// Match reports whether the byte slice b
-// contains any match of the regular expression r.
-func (r *Regexp) Match(b []byte) bool {
-	cstr := (*C.cre2_string_t)(unsafe.Pointer(&b))
-	return bool(C.match(r.rex, cstr.data, cstr.length))
-}
-
 // MatchString reports whether the string s
 // contains any match of the regular expression r.
 func (r *Regexp) MatchString(s string) bool {
-	// cstr := (*C.cre2_string_t)(unsafe.Pointer(&s))
-	// return bool(C.match(r.rex, cstr.data, cstr.length))
-	return r.Match(nocopy.StringToBytes(s))
+	cstr := (*C.cre2_string_t)(unsafe.Pointer(&s))
+	return bool(C.match(r.rex, cstr.data, cstr.length))
 }
 
 // FindString returns a string holding the text of the leftmost match in s of the regular
@@ -159,7 +149,7 @@ func (r *Regexp) FindAllStringSubmatch(s string, n int) [][]string {
 		match[i] = rawMatch[i*(r.nGroup+1) : (i+1)*(r.nGroup+1)]
 	}
 
-	return match
+	return match[:len]
 }
 
 // FindAllStringIndex is the 'All' version of FindStringIndex; it returns a
@@ -192,9 +182,8 @@ func (r *Regexp) FindAllStringIndex(s string, n int) [][]int {
 	rawMatch = rawMatch[:len*2]
 	match := make([][]int, len)
 	for i := 0; i < int(len); i++ {
-		// match[i] = rawMatch[i*2 : i*2+1]
 		match[i] = []int{int(rawMatch[i*2]), int(rawMatch[i*2+1])}
 	}
 
-	return match
+	return match[:len]
 }
