@@ -2,11 +2,8 @@
 
 #include "./cre2_cgo.h"
 
-#include "./cre2.h"
-
 bool match(cre2_regexp_t *rex, const char *text, int textlen) {
-  return cre2_match(rex, text, textlen, 0, textlen, CRE2_UNANCHORED, NULL, 0) ==
-         1;
+  return cre2_match(rex, text, textlen, 0, textlen, CRE2_UNANCHORED, NULL, 0);
 }
 
 int all_matches(cre2_regexp_t *rex, const char *text, int textlen,
@@ -29,21 +26,20 @@ int all_matches(cre2_regexp_t *rex, const char *text, int textlen,
 int all_matches_index(cre2_regexp_t *rex, const char *text, int textlen,
                       int *match, int nmatch, int nsubmatch) {
   int cnt = 0;
-  const char *start_addr = text;
+  const char *pstr = text;
+  cre2_string_t submatch[nsubmatch];
   while (cnt < nmatch && textlen > 0) {
-    cre2_string_t str[nsubmatch];
-    if (!cre2_match(rex, text, textlen, 0, textlen, CRE2_UNANCHORED, &str[0],
-                    nsubmatch)) {
+    if (!cre2_match(rex, text, textlen, 0, textlen, CRE2_UNANCHORED,
+                    &submatch[0], nsubmatch)) {
       return cnt;
     }
     for (int i = 0; i < nsubmatch; i++) {
-      reinterpret_cast<int *>(match + cnt * nsubmatch * 2)[2 * i] =
-          str[i].data - start_addr;
-      reinterpret_cast<int *>(match + cnt * nsubmatch * 2)[2 * i + 1] =
-          ((int *)match + cnt * nsubmatch * 2)[2 * i] + str[i].length;
+      (match + cnt * nsubmatch * 2)[2 * i] = submatch[i].data - pstr;
+      (match + cnt * nsubmatch * 2)[2 * i + 1] =
+          submatch[i].data - pstr + submatch[i].length;
     }
-    textlen -= str->data + str->length - text;
-    text = str->data + str->length;
+    textlen -= submatch->data + submatch->length - text;
+    text = submatch->data + submatch->length;
     cnt++;
   }
   return cnt;

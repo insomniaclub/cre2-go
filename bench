@@ -1,0 +1,43 @@
+2022/12/07 00:01:52 [cre2-go] load static linux_musl
+goos: linux
+goarch: amd64
+pkg: github.com/gensliu/cre2-go
+cpu: 12th Gen Intel(R) Core(TM) i7-12700K
+BenchmarkCre2Compile_Simple-20                         	   81751	     14118 ns/op	      24 B/op	       1 allocs/op
+BenchmarkOriginCompile_Simple-20                       	  180098	      6023 ns/op	    9496 B/op	      64 allocs/op
+BenchmarkCre2Match_Simple-20                           	10048002	       118.8 ns/op	       0 B/op	       0 allocs/op
+BenchmarkOriginMatch_Simple-20                         	 2257126	       534.8 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCre2FindString_Simple-20                      	 5166456	       228.5 ns/op	      40 B/op	       2 allocs/op
+BenchmarkOriginFindString_Simple-20                    	 2172394	       551.2 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCre2FindAllString_Simple-20                   	 1188930	       995.7 ns/op	    1816 B/op	       2 allocs/op
+BenchmarkOriginFindAllString_Simple-20                 	  757189	      1578 ns/op	     288 B/op	       5 allocs/op
+BenchmarkCre2FindAllStringSubmatch_Simple-20           	  576080	      1956 ns/op	    3320 B/op	       3 allocs/op
+BenchmarkOriginFindAllStringSubmatch_Simple-20         	  639182	      1798 ns/op	     498 B/op	       9 allocs/op
+BenchmarkCre2FindAllStringIndex_Simple-20              	 1655252	       723.4 ns/op	    1056 B/op	       6 allocs/op
+BenchmarkOriginFindAllStringIndex_Simple-20            	  731253	      1589 ns/op	     368 B/op	       5 allocs/op
+BenchmarkCre2FindAllStringSubmatchIndex_Simple-20      	  838317	      1348 ns/op	    2016 B/op	       6 allocs/op
+BenchmarkOriginFindAllStringSubmatchIndex_Simple-20    	  715640	      1647 ns/op	     368 B/op	       5 allocs/op
+PASS
+ok  	github.com/gensliu/cre2-go	19.861s
+
+2022/12/07 00:03:11 [cre2-go] load static linux_glibc
+goos: linux
+goarch: amd64
+pkg: github.com/gensliu/cre2-go
+cpu: 12th Gen Intel(R) Core(TM) i7-12700K
+BenchmarkCre2Compile_Simple-20                         	   83785	     14525 ns/op	      24 B/op	       1 allocs/op
+BenchmarkOriginCompile_Simple-20                       	  199705	      5831 ns/op	    9496 B/op	      64 allocs/op
+BenchmarkCre2Match_Simple-20                           	 9880834	       120.7 ns/op	       0 B/op	       0 allocs/op
+BenchmarkOriginMatch_Simple-20                         	 2282796	       539.5 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCre2FindString_Simple-20                      	 4967709	       234.3 ns/op	      40 B/op	       2 allocs/op
+BenchmarkOriginFindString_Simple-20                    	 2203452	       536.5 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCre2FindAllString_Simple-20                   	 1000000	      1029 ns/op	    1816 B/op	       2 allocs/op
+BenchmarkOriginFindAllString_Simple-20                 	  760060	      1539 ns/op	     288 B/op	       5 allocs/op
+BenchmarkCre2FindAllStringSubmatch_Simple-20           	  537591	      1950 ns/op	    3320 B/op	       3 allocs/op
+BenchmarkOriginFindAllStringSubmatch_Simple-20         	  618841	      1710 ns/op	     497 B/op	       9 allocs/op
+BenchmarkCre2FindAllStringIndex_Simple-20              	 1550752	       756.7 ns/op	    1056 B/op	       6 allocs/op
+BenchmarkOriginFindAllStringIndex_Simple-20            	  755006	      1534 ns/op	     368 B/op	       5 allocs/op
+BenchmarkCre2FindAllStringSubmatchIndex_Simple-20      	  866368	      1305 ns/op	    2016 B/op	       6 allocs/op
+BenchmarkOriginFindAllStringSubmatchIndex_Simple-20    	  764720	      1560 ns/op	     369 B/op	       5 allocs/op
+PASS
+ok  	github.com/gensliu/cre2-go	18.705s

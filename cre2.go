@@ -1,6 +1,5 @@
 package cre2
 
-//#include "cre2.h"
 //#include "cre2_cgo.h"
 import "C"
 import (
