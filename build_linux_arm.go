@@ -4,8 +4,8 @@
 
 package cre2
 
-//#cgo CFLAGS: -I${SRCDIR}/include/. -O3
-//#cgo LDFLAGS: ${SRCDIR}/lib/libre2_linux_amd64.a -lre2 -lstdc++ -lpthread -O3
+//#cgo CFLAGS: -I${SRCDIR}/include/. -DUSE_VENDORED_LIBRE2 -O3
+//#cgo LDFLAGS: ${SRCDIR}/lib/libre2_linux_amd64.a -lstdc++ -lpthread -O3
 import "C"
 import "log"
 
