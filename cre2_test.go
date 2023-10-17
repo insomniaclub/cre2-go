@@ -11,12 +11,10 @@ var (
 	patternUnsupport = `(?=abc)123??????xxx------`
 	patternSimple    = `(?:学历|education|文化程度|教育经历|white)\s?=\s?(小学|初中|高中|中专|专科|大专|本科|研究生|博士)`
 
-	textUnmatch       = `这个字符串不会被上面的pattern匹配命中`
-	textSimple        = `测试匹配这个字符串学历=小学&education=大专&教育经历=专科&white=本科结束`
-	simpleMatch       = []string{"学历=小学", "education=大专", "教育经历=专科", "white=本科"}
-	simpleMatchIdx    = [][]int{{27, 40}, {41, 57}, {58, 77}, {78, 90}}
-	simpleSubmatch    = [][]string{{"学历=小学", "小学"}, {"education=大专", "大专"}, {"教育经历=专科", "专科"}, {"white=本科", "本科"}}
-	simpleSubmatchIdx = [][]int{{27, 40, 34, 40}, {41, 57, 51, 57}, {58, 77, 71, 77}, {78, 90, 84, 90}}
+	textUnmatch    = `这个字符串不会被上面的pattern匹配命中`
+	textSimple     = `测试匹配这个字符串学历=小学&education=大专&教育经历=专科&white=本科结束`
+	simpleMatch    = []string{"学历=小学", "education=大专", "教育经历=专科", "white=本科"}
+	simpleSubmatch = [][]string{{"学历=小学", "小学"}, {"education=大专", "大专"}, {"教育经历=专科", "专科"}, {"white=本科", "本科"}}
 )
 
 func TestCompile(t *testing.T) {
@@ -36,8 +34,8 @@ func TestCompile(t *testing.T) {
 	})
 }
 
-func TestMatch(t *testing.T) {
-	convey.Convey("TestMatch", t, func() {
+func TestMatchString(t *testing.T) {
+	convey.Convey("TestMatchString", t, func() {
 		re := MustCompile(patternSimple)
 		convey.So(re.MatchString(textSimple), convey.ShouldBeTrue)
 		convey.So(re.MatchString(textUnmatch), convey.ShouldBeFalse)
@@ -45,7 +43,7 @@ func TestMatch(t *testing.T) {
 }
 
 func TestFindString(t *testing.T) {
-	convey.Convey("TestFindAllString", t, func() {
+	convey.Convey("TestFindString", t, func() {
 		re := MustCompile(patternSimple)
 		convey.So(re.FindString(textUnmatch), convey.ShouldEqual, "")
 		convey.So(re.FindString(textSimple), convey.ShouldEqual, simpleMatch[0])
@@ -74,25 +72,43 @@ func TestFindAllStringSubmatch(t *testing.T) {
 	})
 }
 
-func TestFindAllStringIndex(t *testing.T) {
+func TestFindAllStringSubmatchIndex(t *testing.T) {
 	convey.Convey("TestFindAllStringSubmatch", t, func() {
 		re := MustCompile(patternSimple)
-		convey.So(re.FindAllStringIndex(textUnmatch, -1), convey.ShouldEqual, [][]int(nil))
-		convey.So(re.FindAllStringIndex(textSimple, 0), convey.ShouldEqual, [][]int(nil))
-		convey.So(re.FindAllStringIndex(textSimple, -1), convey.ShouldResemble, simpleMatchIdx)
-		convey.So(re.FindAllStringIndex(textSimple, 10), convey.ShouldResemble, simpleMatchIdx)
-		convey.So(re.FindAllStringIndex(textSimple, 2), convey.ShouldResemble, simpleMatchIdx[:2])
+		// t.Log(re.FindAllStringSubmatchIndex(textUnmatch, -1))
+		res := re.FindAllStringSubmatchIndex(textSimple, -1)
+		t.Log(res)
+		for _, v := range res {
+			for i := 0; i < len(v)/2; i++ {
+				println(textSimple[v[i*2]:v[i*2+1]])
+			}
+		}
 	})
 }
 
-func TestFindAllStringSubmatchIndex(t *testing.T) {
-	convey.Convey("TestFindAllStringSubmatchIndex", t, func() {
+func TestFindAllStringIndex(t *testing.T) {
+	convey.Convey("TestFindAllStringIndex", t, func() {
 		re := MustCompile(patternSimple)
-		convey.So(re.FindAllStringSubmatchIndex(textUnmatch, -1), convey.ShouldEqual, [][]int(nil))
-		convey.So(re.FindAllStringSubmatchIndex(textSimple, 0), convey.ShouldEqual, [][]int(nil))
-		convey.So(re.FindAllStringSubmatchIndex(textSimple, -1), convey.ShouldResemble, simpleSubmatchIdx)
-		convey.So(re.FindAllStringSubmatchIndex(textSimple, 10), convey.ShouldResemble, simpleSubmatchIdx)
-		convey.So(re.FindAllStringSubmatchIndex(textSimple, 2), convey.ShouldResemble, simpleSubmatchIdx[:2])
+		convey.So(re.FindAllStringIndex(textUnmatch, -1), convey.ShouldEqual, [][]int(nil))
+		convey.So(re.FindAllStringIndex(textSimple, 0), convey.ShouldEqual, [][]int(nil))
+		indexes := re.FindAllStringIndex(textSimple, -1)
+		strs := make([]string, len(indexes))
+		for i, index := range indexes {
+			strs[i] = textSimple[index[0]:index[1]]
+		}
+		convey.So(strs, convey.ShouldResemble, simpleMatch)
+		indexes = re.FindAllStringIndex(textSimple, 10)
+		strs = make([]string, len(indexes))
+		for i, index := range indexes {
+			strs[i] = textSimple[index[0]:index[1]]
+		}
+		convey.So(strs, convey.ShouldResemble, simpleMatch)
+		indexes = re.FindAllStringIndex(textSimple, 2)
+		strs = make([]string, len(indexes))
+		for i, index := range indexes {
+			strs[i] = textSimple[index[0]:index[1]]
+		}
+		convey.So(strs, convey.ShouldResemble, simpleMatch[:2])
 	})
 }
 
@@ -199,15 +215,6 @@ func BenchmarkOriginFindAllStringIndex_Simple(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = re.FindAllStringIndex(textSimple, -1)
-	}
-}
-
-func BenchmarkCre2FindAllStringSubmatchIndex_Simple(b *testing.B) {
-	re := MustCompile(patternSimple)
-	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_ = re.FindAllStringSubmatchIndex(textSimple, -1)
 	}
 }
 

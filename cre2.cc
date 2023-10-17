@@ -12,15 +12,8 @@
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
 #endif
-
-#ifdef USE_VENDORED_LIBRE2
-#include "include.h"
-#include "include/set.h"
-#else
 #include <re2/re2.h>
 #include <re2/set.h>
-#endif
-
 #include "cre2.h"
 
 #include <cstdlib>

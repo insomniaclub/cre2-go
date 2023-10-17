@@ -1,11 +1,33 @@
 package cre2
 
+//#cgo CXXFLAGS: -std=c++17 -O3 -g
+//#cgo pkg-config: re2
+//#include <stdlib.h>
+//#include "cre2.h"
 //#include "cre2_cgo.h"
 import "C"
 import (
 	"fmt"
+	"sync"
 	"unsafe"
 )
+
+const (
+	bufferSize = 100000
+	sliceSize  = bufferSize / 2
+)
+
+type cBuffer struct {
+	b    []C.int
+	lock sync.Mutex
+}
+
+func newBuffer() cBuffer {
+	return cBuffer{
+		b:    make([]C.int, bufferSize),
+		lock: sync.Mutex{},
+	}
+}
 
 type unsafeptr = unsafe.Pointer
 
@@ -13,9 +35,11 @@ type unsafeptr = unsafe.Pointer
 // A Regexp is safe for concurrent use by multiple goroutines,
 // except for configuration methods, such as Longest.
 type Regexp struct {
-	opt    unsafeptr // *C.cre2_options_t
+	expr   string
+	opt    unsafeptr //	*C.cre2_options_t
 	rex    unsafeptr // *C.cre2_regexp_t
 	nGroup int       // num of capturing groups
+	buffer cBuffer
 }
 
 // Compile parses a regular expression and returns, if successful,
@@ -24,6 +48,7 @@ func Compile(s string) (*Regexp, error) {
 	pattern := *(*C.cre2_string_t)(unsafeptr(&s))
 
 	opt := C.cre2_opt_new()
+	C.cre2_opt_set_max_mem(opt, 50<<20) //	50MB, default is 8MB
 	rex := C.cre2_new(pattern.data, C.int(pattern.length), opt)
 
 	if errCode := C.cre2_error_code(rex); errCode != C.CRE2_NO_ERROR {
@@ -31,7 +56,7 @@ func Compile(s string) (*Regexp, error) {
 		return nil, fmt.Errorf("cre2: Compile(`%s`): error parsing regexp: %s", s, errMsg)
 	}
 
-	return &Regexp{opt, rex, int(C.cre2_num_capturing_groups(rex))}, nil
+	return &Regexp{s, opt, rex, int(C.cre2_num_capturing_groups(rex)), newBuffer()}, nil
 }
 
 // MustCompile is like Compile but panics if the expression cannot be parsed.
@@ -43,6 +68,10 @@ func MustCompile(s string) *Regexp {
 		panic(err)
 	}
 	return r
+}
+
+func (r *Regexp) String() string {
+	return r.expr
 }
 
 // Close will free the members of the Regexp, which was allocated in C heap.
@@ -60,7 +89,7 @@ func (r *Regexp) Close() {
 // MatchString reports whether the string s
 // contains any match of the regular expression r.
 func (r *Regexp) MatchString(s string) bool {
-	cstr := (*C.cre2_string_t)(unsafe.Pointer(&s))
+	cstr := (*C.cre2_string_t)(unsafeptr(&s))
 	return bool(C.match(r.rex, cstr.data, cstr.length))
 }
 
@@ -80,71 +109,46 @@ func (r *Regexp) FindString(s string) string {
 // as defined by the 'All' description in the package comment.
 // A return value of nil indicates no match.
 func (r *Regexp) FindAllString(s string, n int) []string {
-	if n == 0 {
+	groups := r.FindAllStringIndex(s, n)
+	if groups == nil {
 		return nil
 	}
 
-	cstr := (*C.cre2_string_t)(unsafe.Pointer(&s))
-	if n < 0 {
-		n = int(cstr.length) + 1
+	matched := make([]string, 0, len(groups))
+	for _, group := range groups {
+		matched = append(matched, s[group[0]:group[1]])
 	}
+	return matched
+}
 
-	matched := make([]string, n)
-	len := C.all_matches(
-		/* regexp    */ r.rex,
-		/* textaddr  */ cstr.data,
-		/* textlen   */ cstr.length,
-		/* match     */ (*C.cre2_string_t)(unsafe.Pointer(&matched[0])),
-		/* nmatch    */ C.int(n),
-		/* nsubmatch */ 1,
-	)
-	if len == 0 {
+func (r *Regexp) FindStringSubmatch(s string) []string {
+	match := r.FindAllStringSubmatch(s, 1)
+	if len(match) == 0 {
 		return nil
 	}
-
-	return matched[:len]
+	return match[0]
 }
 
 // FindAllStringSubmatch it returns a slice of all successive matches of the expression,
 // as defined by the 'All' description in the package comment.
 // A return value of nil indicates no match.
 func (r *Regexp) FindAllStringSubmatch(s string, n int) [][]string {
-	if n == 0 {
+	groups := r.FindAllStringSubmatchIndex(s, n)
+	if groups == nil {
 		return nil
 	}
 
-	cstr := (*C.cre2_string_t)(unsafe.Pointer(&s))
-	if n < 0 {
-		n = int(cstr.length) + 1
+	nGroup := r.nGroup + 1
+
+	matched := make([][]string, 0, len(groups))
+	for _, group := range groups {
+		tmp := make([]string, 0, nGroup)
+		for i := 0; i < nGroup; i++ {
+			tmp = append(tmp, s[group[i*2]:group[i*2+1]])
+		}
+		matched = append(matched, tmp)
 	}
-
-	// NOTE: the following code will cause a gc panic, because the memory of [][]string is not continuous.
-	// 	match := make([][]string, n)
-	// 	for i := range match {
-	// 		match[i] = make([]string, re.nGroup+1)
-	// 	}
-	//	C.all_matches(..., (**C.cre2_string_t)(unsafe.Pointer(&match[0][0])),...)
-	rawMatch := make([]string, n*(r.nGroup+1))
-	len := C.all_matches(
-		/* regexp    */ r.rex,
-		/* textaddr  */ cstr.data,
-		/* textlen   */ cstr.length,
-		/* match     */ (*C.cre2_string_t)(unsafe.Pointer(&rawMatch[0])),
-		/* nmatch    */ C.int(n),
-		/* nsubmatch */ C.int(r.nGroup+1),
-	)
-
-	if len == 0 {
-		return nil
-	}
-
-	rawMatch = rawMatch[:int(len)*(r.nGroup+1)]
-	match := make([][]string, len)
-	for i := 0; i < int(len); i++ {
-		match[i] = rawMatch[i*(r.nGroup+1) : (i+1)*(r.nGroup+1)]
-	}
-
-	return match[:len]
+	return matched
 }
 
 // FindAllStringIndex is the 'All' version of FindStringIndex; it returns a
@@ -156,32 +160,34 @@ func (r *Regexp) FindAllStringIndex(s string, n int) [][]int {
 		return nil
 	}
 
-	cstr := (*C.cre2_string_t)(unsafe.Pointer(&s))
+	cstr := (*C.cre2_string_t)(unsafeptr(&s))
 	if n < 0 {
 		n = int(cstr.length) + 1
 	}
+	if n > sliceSize {
+		n = sliceSize
+	}
 
-	rawMatch := make([]C.int, n*2)
-	len := C.all_matches_index(
-		/* regexp    */ r.rex,
-		/* textaddr  */ cstr.data,
-		/* textlen   */ cstr.length,
-		/* match     */ (*C.int)(unsafe.Pointer(&rawMatch[0])),
-		/* nmatch    */ C.int(n),
-		/* nsubmatch */ 1,
+	r.buffer.lock.Lock()
+	defer r.buffer.lock.Unlock()
+
+	len := C.find_all_string_index(
+		/* regexp   */ r.rex,
+		/* textaddr */ cstr.data,
+		/* textlen  */ cstr.length,
+		/* match    */ (**C.int)(unsafeptr(&r.buffer.b[0])),
+		/* nmatch   */ C.int(n),
 	)
 
 	if len == 0 {
 		return nil
 	}
 
-	rawMatch = rawMatch[:len*2]
-	match := make([][]int, len)
+	matched := make([][]int, 0, len)
 	for i := 0; i < int(len); i++ {
-		match[i] = []int{int(rawMatch[i*2]), int(rawMatch[i*2+1])}
+		matched = append(matched, []int{int(r.buffer.b[i*2]), int(r.buffer.b[i*2+1])})
 	}
-
-	return match[:len]
+	return matched
 }
 
 func (r *Regexp) FindAllStringSubmatchIndex(s string, n int) [][]int {
@@ -190,38 +196,43 @@ func (r *Regexp) FindAllStringSubmatchIndex(s string, n int) [][]int {
 	}
 
 	cstr := (*C.cre2_string_t)(unsafe.Pointer(&s))
+	nGroup := r.nGroup + 1
+	maxN := sliceSize / nGroup
 	if n < 0 {
-		n = int(cstr.length) + 1
+		n = (int(cstr.length) + 1) / nGroup
+	}
+	if n > maxN {
+		n = maxN
 	}
 
-	// NOTE: the following code will cause a gc panic, because the memory of [][]int is not continuous.
-	// 	match := make([][]int, n)
-	// 	for i := range match {
-	// 		match[i] = make([]int, re.nGroup+1)
-	// 	}
-	//	C.all_matches_index(..., (**C.cre2_string_t)(unsafe.Pointer(&match[0][0])),...)
-	rawMatch := make([]C.int, n*(r.nGroup+1)*2)
-	len := C.all_matches_index(
-		/* regexp    */ r.rex,
-		/* textaddr  */ cstr.data,
-		/* textlen   */ cstr.length,
-		/* match     */ (*C.int)(unsafe.Pointer(&rawMatch[0])),
-		/* nmatch    */ C.int(n),
-		/* nsubmatch */ C.int(r.nGroup+1),
+	r.buffer.lock.Lock()
+	defer r.buffer.lock.Unlock()
+
+	len := C.find_all_string_submatch_index(
+		/* regexp   */ r.rex,
+		/* textaddr */ cstr.data,
+		/* textlen  */ cstr.length,
+		/* match    */ (**C.int)(unsafe.Pointer(&r.buffer.b[0])),
+		/* nmatch   */ C.int(n),
+		/* nsubmatch   */ C.int(nGroup),
 	)
 
 	if len == 0 {
 		return nil
 	}
 
-	rawMatch = rawMatch[:int(len)*(r.nGroup+1)*2]
-	match := make([][]int, len)
+	matched := make([][]int, 0, len)
 	for i := 0; i < int(len); i++ {
-		match[i] = make([]int, (r.nGroup+1)*2)
-		for j := 0; j < (r.nGroup+1)*2; j++ {
-			match[i][j] = int(rawMatch[i*(r.nGroup+1)*2+j])
+		tmp := make([]int, 0, nGroup)
+		for j := 0; j < nGroup; j++ {
+			tmp = append(
+				tmp,
+				int(r.buffer.b[i*nGroup*2+j*2]),
+				int(r.buffer.b[i*nGroup*2+j*2+1]),
+			)
 		}
+		matched = append(matched, tmp)
 	}
 
-	return match[:len]
+	return matched
 }
