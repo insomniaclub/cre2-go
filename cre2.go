@@ -86,6 +86,10 @@ func (r *Regexp) Close() {
 	}
 }
 
+func (r *Regexp) NumSubexp() int {
+	panic("not implemented")
+}
+
 // MatchString reports whether the string s
 // contains any match of the regular expression r.
 func (r *Regexp) MatchString(s string) bool {
@@ -105,6 +109,14 @@ func (r *Regexp) FindString(s string) string {
 	return match[0]
 }
 
+func (r *Regexp) FindStringSubmatch(s string) []string {
+	match := r.FindAllStringSubmatch(s, 1)
+	if len(match) == 0 {
+		return nil
+	}
+	return match[0]
+}
+
 // FindAllString returns a slice of all successive matches of the expression,
 // as defined by the 'All' description in the package comment.
 // A return value of nil indicates no match.
@@ -117,36 +129,6 @@ func (r *Regexp) FindAllString(s string, n int) []string {
 	matched := make([]string, 0, len(groups))
 	for _, group := range groups {
 		matched = append(matched, s[group[0]:group[1]])
-	}
-	return matched
-}
-
-func (r *Regexp) FindStringSubmatch(s string) []string {
-	match := r.FindAllStringSubmatch(s, 1)
-	if len(match) == 0 {
-		return nil
-	}
-	return match[0]
-}
-
-// FindAllStringSubmatch it returns a slice of all successive matches of the expression,
-// as defined by the 'All' description in the package comment.
-// A return value of nil indicates no match.
-func (r *Regexp) FindAllStringSubmatch(s string, n int) [][]string {
-	groups := r.FindAllStringSubmatchIndex(s, n)
-	if groups == nil {
-		return nil
-	}
-
-	nGroup := r.nGroup + 1
-
-	matched := make([][]string, 0, len(groups))
-	for _, group := range groups {
-		tmp := make([]string, 0, nGroup)
-		for i := 0; i < nGroup; i++ {
-			tmp = append(tmp, s[group[i*2]:group[i*2+1]])
-		}
-		matched = append(matched, tmp)
 	}
 	return matched
 }
@@ -186,6 +168,28 @@ func (r *Regexp) FindAllStringIndex(s string, n int) [][]int {
 	matched := make([][]int, 0, len)
 	for i := 0; i < int(len); i++ {
 		matched = append(matched, []int{int(r.buffer.b[i*2]), int(r.buffer.b[i*2+1])})
+	}
+	return matched
+}
+
+// FindAllStringSubmatch it returns a slice of all successive matches of the expression,
+// as defined by the 'All' description in the package comment.
+// A return value of nil indicates no match.
+func (r *Regexp) FindAllStringSubmatch(s string, n int) [][]string {
+	groups := r.FindAllStringSubmatchIndex(s, n)
+	if groups == nil {
+		return nil
+	}
+
+	nGroup := r.nGroup + 1
+
+	matched := make([][]string, 0, len(groups))
+	for _, group := range groups {
+		tmp := make([]string, 0, nGroup)
+		for i := 0; i < nGroup; i++ {
+			tmp = append(tmp, s[group[i*2]:group[i*2+1]])
+		}
+		matched = append(matched, tmp)
 	}
 	return matched
 }
